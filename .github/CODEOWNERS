@@ -1,2 +1,3 @@
-*        @Arquitectura-KodeHaus/qa
-src/**   @Arquitectura-KodeHaus/developers
+* @Arquitectura-KodeHaus/Q-A
+src/** @Arquitectura-KodeHaus/Developers
+.github/** @Arquitectura-KodeHaus/DevOps
