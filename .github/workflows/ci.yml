@@ -1,0 +1,10 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+
+jobs:
+  call-reusable-ci:
+    uses: Arquitectura-KodeHaus/.github/.github/workflows/reusable-ci.yml@main
