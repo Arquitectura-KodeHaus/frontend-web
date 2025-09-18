@@ -1,0 +1,14 @@
+name: "Feature request"
+description: "Propón una mejora"
+labels: ["enhancement"]
+title: "[FEAT] - <título corto>"
+body:
+  - type: textarea
+    id: value
+    attributes:
+      label: "Valor/impacto"
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: "Alcance (out of scope claro)"
