@@ -40,4 +40,8 @@ jobs:
         run: npm run build
 
       - name: Desplegar a Firebase Hosting
+<<<<<<< HEAD:.github/workflows/deploy-frontend.yml
         run: firebase deploy --only hosting --project=${{ vars.GCP_PROJECT_ID }}
+=======
+        run: firebase deploy --only hosting --project=${{ vars.GCP_PROJECT_ID }}
+>>>>>>> 1c8d50b844cf8dcd1684da5e0209a5a91d090ebc:frontend-web/.github/workflows/deploy-frontend.yml
