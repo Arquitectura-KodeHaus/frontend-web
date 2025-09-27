@@ -1,0 +1,60 @@
+<div class="auth-container">
+  <!-- Encabezado centrado -->
+  <h1 class="app-title">Mercado Plaza</h1>
+  <p class="app-subtitle">Conectando comerciantes y consumidores</p>
+
+  <!-- Tarjeta -->
+  <div class="auth-card">
+    <h2 *ngIf="!isRegisterMode">Iniciar Sesión</h2>
+    <h2 *ngIf="isRegisterMode">Crear Cuenta</h2>
+
+    <p class="subtitle">
+      Únete a nuestra comunidad de comerciantes y consumidores
+    </p>
+
+    <!-- Tabs de roles (siempre visibles en login y registro) -->
+    <div class="role-selector">
+      <button [class.active]="role === 'consumer'" (click)="role = 'consumer'">
+        👤 Consumidor
+      </button>
+      <button [class.active]="role === 'merchant'" (click)="role = 'merchant'">
+        🏪 Comerciante
+      </button>
+    </div>
+
+    <!-- Login -->
+    <form *ngIf="!isRegisterMode" (ngSubmit)="onSubmit()">
+      <input type="email" placeholder="Correo Electrónico" [(ngModel)]="email" name="email" required />
+      <input type="password" placeholder="Contraseña" [(ngModel)]="password" name="password" required />
+      <button type="submit" class="submit-btn">Iniciar Sesión</button>
+    </form>
+
+    <!-- Registro Consumidor -->
+    <form *ngIf="isRegisterMode && role === 'consumer'" (ngSubmit)="onSubmit()">
+      <input type="email" placeholder="Correo Electrónico" [(ngModel)]="email" name="email" required />
+      <input type="password" placeholder="Contraseña" [(ngModel)]="password" name="password" required />
+      <input type="text" placeholder="Nombre Completo" [(ngModel)]="name" name="name" required />
+      <input type="tel" placeholder="Teléfono" [(ngModel)]="phone" name="phone" />
+      <button type="submit" class="submit-btn">Crear Cuenta</button>
+    </form>
+
+    <!-- Registro Comerciante -->
+    <form *ngIf="isRegisterMode && role === 'merchant'" (ngSubmit)="onSubmit()">
+      <input type="email" placeholder="Correo Electrónico" [(ngModel)]="email" name="email" required />
+      <input type="password" placeholder="Contraseña" [(ngModel)]="password" name="password" required />
+      <input type="text" placeholder="Nombre Completo" [(ngModel)]="name" name="name" required />
+      <input type="tel" placeholder="Teléfono" [(ngModel)]="phone" name="phone" />
+      <input type="text" placeholder="Número de Puesto" [(ngModel)]="stallNumber" name="stallNumber" />
+      <input type="text" placeholder="Ubicación del Mercado" [(ngModel)]="marketLocation" name="marketLocation" />
+      <button type="submit" class="submit-btn">Crear Cuenta</button>
+    </form>
+
+    <!-- Switch Login/Register -->
+    <p *ngIf="!isRegisterMode" class="switch">
+      ¿No tienes cuenta? <a (click)="toggleMode()">Regístrate aquí</a>
+    </p>
+    <p *ngIf="isRegisterMode" class="switch">
+      ¿Ya tienes cuenta? <a (click)="toggleMode()">Inicia sesión</a>
+    </p>
+  </div>
+</div>
