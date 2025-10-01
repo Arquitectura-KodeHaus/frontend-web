@@ -89,14 +89,14 @@ jobs:
       - name: Build image
         run: |
           docker build \
-            -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest \
             ./plazapp
 
       - name: Push image
         run: |
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest
 
   deploy:
     name: Deploy to Cloud Run
