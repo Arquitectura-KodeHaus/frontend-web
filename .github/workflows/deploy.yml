@@ -83,7 +83,8 @@ jobs:
 
       - name: Authenticate Docker with Artifact Registry
         run: |
-          cat $GOOGLE_APPLICATION_CREDENTIALS | docker login -u _json_key --password-stdin https://${{ env.REGION }}-docker.pkg.dev
+          ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
+          echo "$ACCESS_TOKEN" | docker login -u oauth2accesstoken --password-stdin https://${{ env.REGION }}-docker.pkg.dev
 
       - name: Build image
         run: |
