@@ -1,0 +1,133 @@
+name: Build & Deploy (Cloud Run)
+
+on:
+  push:
+    branches: [ "main", "prod" ]   # main = staging, prod = production
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  REGION: ${{ secrets.GCP_REGION }}
+  AR_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
+  SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
+
+jobs:
+  staging:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    name: Build → Push → Deploy (STAGING)
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to GCP (TEST) via OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER_TEST }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_TEST }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Docker auth to Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Compute image name
+        id: img
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${AR_REPO}/${SERVICE_NAME}:${GITHUB_SHA}"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Build & Push
+        run: |
+          docker build -t "${{ steps.img.outputs.image }}" .
+          docker push "${{ steps.img.outputs.image }}"
+
+      - name: Deploy to Cloud Run (STAGING)
+        run: |
+          case "${SERVICE_NAME}" in
+            frontend-web) RUNTIME_SA="run-frontend@${{ secrets.GCP_PROJECT_ID_TEST }}.iam.gserviceaccount.com" ;;
+            backend-java) RUNTIME_SA="run-backend-java@${{ secrets.GCP_PROJECT_ID_TEST }}.iam.gserviceaccount.com" ;;
+            backend-dotnet) RUNTIME_SA="run-backend-dotnet@${{ secrets.GCP_PROJECT_ID_TEST }}.iam.gserviceaccount.com" ;;
+          esac
+
+          ENV_FLAGS="--set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_TEST }}"
+          if [ "${SERVICE_NAME}" = "frontend-web" ]; then
+            ENV_FLAGS="${ENV_FLAGS},API_BASE_URL=${{ secrets.API_BASE_URL_TEST }}"
+          fi
+          if [ "${SERVICE_NAME}" = "backend-dotnet" ]; then
+            ENV_FLAGS="${ENV_FLAGS},ASPNETCORE_URLS=http://0.0.0.0:\$PORT"
+          fi
+
+          gcloud run deploy "${SERVICE_NAME}" \
+            --image "${{ steps.img.outputs.image }}" \
+            --project "${{ secrets.GCP_PROJECT_ID_TEST }}" \
+            --region "${REGION}" \
+            --platform managed \
+            --service-account "${RUNTIME_SA}" \
+            --allow-unauthenticated \
+            ${ENV_FLAGS}
+
+  production:
+    if: ${{ github.ref == 'refs/heads/prod' }}
+    name: Promote to PRODUCTION
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to GCP (PROD) via OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER_PROD }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Docker auth to Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Compute image names
+        id: names
+        run: |
+          SRC="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${AR_REPO}/${SERVICE_NAME}:${GITHUB_SHA}"
+          DST="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${AR_REPO}/${SERVICE_NAME}:${GITHUB_SHA}"
+          echo "src=$SRC" >> $GITHUB_OUTPUT
+          echo "dst=$DST" >> $GITHUB_OUTPUT
+
+      - name: Pull from STAGING & push to PROD
+        run: |
+          docker pull "${{ steps.names.outputs.src }}"
+          docker tag "${{ steps.names.outputs.src }}" "${{ steps.names.outputs.dst }}"
+          docker push "${{ steps.names.outputs.dst }}"
+
+      - name: Deploy to Cloud Run (PROD)
+        run: |
+          case "${SERVICE_NAME}" in
+            frontend-web) RUNTIME_SA="run-frontend@${{ secrets.GCP_PROJECT_ID_PROD }}.iam.gserviceaccount.com" ;;
+            backend-java) RUNTIME_SA="run-backend-java@${{ secrets.GCP_PROJECT_ID_PROD }}.iam.gserviceaccount.com" ;;
+            backend-dotnet) RUNTIME_SA="run-backend-dotnet@${{ secrets.GCP_PROJECT_ID_PROD }}.iam.gserviceaccount.com" ;;
+          esac
+
+          ENV_FLAGS="--set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_PROD }}"
+          if [ "${SERVICE_NAME}" = "frontend-web" ]; then
+            ENV_FLAGS="${ENV_FLAGS},API_BASE_URL=${{ secrets.API_BASE_URL_PROD }}"
+          fi
+          if [ "${SERVICE_NAME}" = "backend-dotnet" ]; then
+            ENV_FLAGS="${ENV_FLAGS},ASPNETCORE_URLS=http://0.0.0.0:\$PORT"
+          fi
+
+          gcloud run deploy "${SERVICE_NAME}" \
+            --image "${{ steps.names.outputs.dst }}" \
+            --project "${{ secrets.GCP_PROJECT_ID_PROD }}" \
+            --region "${REGION}" \
+            --platform managed \
+            --service-account "${RUNTIME_SA}" \
+            --allow-unauthenticated \
+            ${ENV_FLAGS}
