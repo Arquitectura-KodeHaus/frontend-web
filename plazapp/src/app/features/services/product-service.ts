@@ -7,6 +7,7 @@ import { ActiveProductView } from '../../shared/interfaces/active-product-view.i
 import { FirestoreTimestamp } from '../../shared/interfaces/firestoreTimestamp.interface';
 import { CatalogProductDto, MerchantProductDto } from '../../shared/interfaces/dto.interface';
 import { environment } from '../../../environments/environment.development';
+import { MerchantProductUpdate } from '../../shared/interfaces/edit-product-form.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -83,6 +84,10 @@ export class ProductService {
       });
     }
 
+    updateProduct(updateData: MerchantProductUpdate): Observable<string> {
+      return this.http.put(`${this.apiUrl}/MerchantProducts`, updateData, {responseType: 'text'});
+    }
+
     // 4. AGREGAR PRODUCTO (Se mantiene igual)
     addProductToPuesto(merchantId: string, catalogProductId: string, initialPrice: number): Observable<any> {
         const payload = { 
@@ -92,5 +97,10 @@ export class ProductService {
             status: true 
         };
         return this.http.post(`${this.apiUrl}/MerchantProducts`, payload);
+    }
+
+    deleteProduct(productId: string): Observable<any> {
+        const url = `${this.apiUrl}/MerchantProducts/${productId}`; 
+        return this.http.delete(url, { responseType: 'text' });
     }
 }

@@ -1,0 +1,78 @@
+<div class="dashboard-layout">
+    <header class="user-greeting">
+        <h1>Hola, Juan Pérez</h1> 
+        <p>Explora productos y crea tu presupuesto</p>
+    </header>
+
+    <div class="tabs-group">
+        
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'explore'"
+            (click)="setActiveTab('explore')">
+            Explorar
+        </button>
+
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'budget'"
+            (click)="setActiveTab('budget')">
+            Presupuesto
+        </button>
+
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'reservations'"
+            (click)="setActiveTab('reservations')">
+            Reservas
+        </button>
+
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'favorites'"
+            (click)="setActiveTab('favorites')">
+            Favoritos
+        </button>
+        
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'chat'"
+            (click)="setActiveTab('chat')">
+            Chat
+        </button>
+
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'overview'"
+            (click)="setActiveTab('overview')">
+            Resumen
+        </button>
+    </div>
+
+    <div class="tabs-content-container">
+
+        <div *ngIf="activeTab === 'explore'">
+            <app-explore></app-explore> 
+        </div>
+
+        <div *ngIf="activeTab === 'budget'">
+            <app-budget></app-budget> 
+        </div>
+
+        <div *ngIf="activeTab === 'reservations'">
+            <app-reservations></app-reservations>
+        </div>
+
+        <div *ngIf="activeTab === 'favorites'">
+            <app-favorites></app-favorites>
+        </div>
+
+        <div *ngIf="activeTab === 'chat'">
+            <app-chat></app-chat>
+        </div>
+        
+        <div *ngIf="activeTab === 'overview'" class="card-grid">
+            <app-resume></app-resume>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,12 @@
+<div class="card-grid">
+    <div *ngFor="let card of cardData" class="card-base hover-shadow">
+        <div class="card-header-row">
+            <h3 class="card-title">{{ card.title }}</h3>
+            <span class="icon-muted">📦</span> 
+        </div>
+        <div class="card-content">
+            <div class="metric-value" [class]="card.colorClass">{{ card.value }}</div>
+            <p class="metric-detail">{{ card.detail }}</p>
+        </div>
+    </div>
+</div>

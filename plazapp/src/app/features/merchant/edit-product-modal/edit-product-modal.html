@@ -1,0 +1,33 @@
+<div class="modal-backdrop" *ngIf="product">
+    <div class="modal-content">
+        
+        <div class="modal-header">
+            <h3 class="modal-title">Editar {{ product.name }}</h3>
+            <button class="close-btn" (click)="onCancel()">×</button>
+        </div>
+
+        <div class="modal-subtitle">
+            Actualiza los detalles de este producto
+        </div>
+
+        <form (ngSubmit)="onSave()" class="modal-form">
+            
+            <div class="form-group">
+                <label for="price">Precio Diario (opcional)</label>
+                <input 
+                    id="price" 
+                    type="number" 
+                    [(ngModel)]="formModel.merchantPrice" 
+                    name="merchantPrice"
+                    class="form-control"
+                    placeholder="E.g., 3.50">
+                <small class="hint-text">Precio boletín: ${{ product.bulletinPrice | number:'1.2-2' }}</small>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" (click)="onCancel()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>

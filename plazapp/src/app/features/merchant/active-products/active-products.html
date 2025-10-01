@@ -33,7 +33,8 @@
             
             <div class="detail-item">
                 <span class="detail-label">Stock</span>
-                <span class="detail-value">{{ product.stock }} kg</span> </div>
+                <span class="detail-value">{{ product.stock }} kg</span> 
+            </div>
             
             <div class="detail-item">
                 <span class="detail-label">Estado</span>
@@ -43,7 +44,7 @@
 
         <div class="product-actions">
             <button class="btn btn-secondary" (click)="onEdit(product)">Editar</button>
-            <button class="btn btn-danger">Eliminar</button>
+            <button class="btn btn-danger" (click)="onDelete(product)">Eliminar</button>
         </div>
 
     </div>
@@ -51,4 +52,11 @@
     <div *ngIf="!(products$ | async)?.length" class="no-data-message">
         Aún no tienes productos activos.
     </div>
+
+    <app-edit-product-modal
+        *ngIf="isModalOpen"
+        [product]="productToEdit"
+        (closeModal)="onCloseModal()"
+        (saveChanges)="onSaveChanges($event)">
+    </app-edit-product-modal>
 </div>

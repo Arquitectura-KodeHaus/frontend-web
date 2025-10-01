@@ -1,0 +1,177 @@
+/* Heredamos estilos de búsqueda y filtros del catálogo */
+.filter-and-search-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    gap: 15px; /* Espacio entre search y filtros */
+}
+
+.search-input {
+    flex-grow: 1; 
+    max-width: 400px; /* Un poco más ancho aquí */
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+}
+
+.filter-buttons-group {
+    display: flex;
+    background-color: #f0f0f0; 
+    padding: 5px;
+    border-radius: 8px;
+    gap: 5px;
+}
+
+.filter-btn {
+    background: none; border: none; padding: 8px 15px; cursor: pointer;
+    font-size: 14px; font-weight: 500; color: #555; border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.filter-active {
+    background-color: white; color: #333; font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos de las Tags (Verduras, Frutas) */
+.tag { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 4px; text-transform: capitalize; }
+.tag-verduras { background-color: #e6f4ea; color: #388e3c; }
+.tag-frutas { background-color: #fff3e0; color: #f57c00; }
+
+/* Nuevo: Contenedor principal de la vista Explore */
+.explore-container {
+    padding: 20px 0;
+}
+
+.section-header {
+    margin-bottom: 25px;
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.section-subtitle {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+/* Estilos para los grupos de productos (Ej: Tomates) */
+.products-grouped-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* Espacio entre los grupos de productos */
+}
+
+.product-group-card {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+}
+
+.product-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.product-group-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.merchant-count {
+    font-size: 13px;
+    color: #777;
+    margin-bottom: 15px;
+    border-bottom: 1px dashed #eee; /* Separador sutil */
+    padding-bottom: 10px;
+}
+
+/* Estilos para cada oferta de comerciante */
+.merchant-offer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f5f5f5; /* Separador entre ofertas */
+}
+
+.merchant-offer-row:last-child {
+    border-bottom: none; /* No hay separador para el último */
+}
+
+.merchant-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.merchant-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.puesto-name {
+    font-size: 13px;
+    color: #777;
+}
+
+.price-and-reserve {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.price-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.current-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: #4CAF50; /* Color verde */
+}
+
+.bulletin-stock-info {
+    font-size: 12px;
+    color: #999;
+}
+
+.btn-primary {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #388e3c;
+}
+
+.no-data-message {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    background-color: #fff;
+    border: 1px dashed #ddd;
+    border-radius: 8px;
+    margin-top: 20px;
+}
