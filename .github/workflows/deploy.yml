@@ -21,6 +21,8 @@ jobs:
       contents: read
       id-token: write
     if: github.ref_name == 'develop' || github.ref_name == 'prod'
+    environment:
+      name: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
 
     steps:
       - name: Checkout
@@ -58,6 +60,10 @@ jobs:
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER_PROD }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
+          token_format: 'access_token'
+          access_token_lifetime: '3600s'
+          token_format: 'access_token'
+          access_token_lifetime: '3600s'
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
@@ -94,8 +100,8 @@ jobs:
       - name: Auth to GCP (WIF)
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ github.ref_name == 'prod' && secrets.WIF_PROVIDER_PROD || secrets.WIF_PROVIDER_DEV }}
-          service_account: ${{ github.ref_name == 'prod' && secrets.WIF_SERVICE_ACCOUNT_PROD || secrets.WIF_SERVICE_ACCOUNT_DEV }}
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER_PROD }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
