@@ -55,6 +55,23 @@ jobs:
           CONFIG=$([ "${{ github.ref_name }}" = "prod" ] && echo "production" || echo "staging")
           npm run build -- --configuration=$CONFIG
 
+      - name: Debug secrets
+        run: |
+          echo "Checking if secrets are accessible..."
+          if [ -z "$WIF_PROVIDER" ]; then
+            echo "❌ WIF_PROVIDER_PROD is EMPTY or not accessible"
+          else
+            echo "✅ WIF_PROVIDER_PROD is set (length: ${#WIF_PROVIDER})"
+          fi
+          if [ -z "$WIF_SA" ]; then
+            echo "❌ WIF_SERVICE_ACCOUNT_PROD is EMPTY or not accessible"
+          else
+            echo "✅ WIF_SERVICE_ACCOUNT_PROD is set (length: ${#WIF_SA})"
+          fi
+        env:
+          WIF_PROVIDER: ${{ secrets.WIF_PROVIDER_PROD }}
+          WIF_SA: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
+
       - name: Auth to GCP (WIF)
         uses: google-github-actions/auth@v2
         with:
