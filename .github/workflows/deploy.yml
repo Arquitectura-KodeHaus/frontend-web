@@ -1,31 +1,35 @@
-name: ci-frontend
+name: ci-frontend-subdir
 
 on:
   push:
-    branches: [ develop, prod ]
+    branches: [ "develop", "prod" ]
   pull_request:
-    branches: [ prod ]
+    branches: [ "prod" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
 
 env:
+  PROJECT_ID: kodehaus-principal-473704
   REGION: us-central1
   ARTIFACT_REPO: apps
   IMAGE_NAME: frontend-web
   SERVICE_NAME: frontend-web
   NODE_VERSION: '18'
+  APP_DIR: plazapp            # 👈 aquí está tu package.json
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build_and_push:
-    name: Build & Push
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    if: github.ref_name == 'develop' || github.ref_name == 'prod'
-    
-    # Configuración para que todos los comandos se ejecuten en el subdirectorio plazapp
     defaults:
       run:
-        working-directory: ./plazapp
+        working-directory: ${{ env.APP_DIR }}
 
     steps:
       - name: Checkout
@@ -35,12 +39,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            ${{ env.APP_DIR }}/package-lock.json
+            ${{ env.APP_DIR }}/yarn.lock
+            ${{ env.APP_DIR }}/pnpm-lock.yaml
+
+      - name: Mostrar árbol (debug)
+        run: |
+          pwd
+          ls -la
 
       - name: Install deps (lockfile-aware)
+        shell: bash
         run: |
           if [ -f pnpm-lock.yaml ]; then
             npm i -g pnpm
-            pnpm install
+            pnpm install --frozen-lockfile
           elif [ -f yarn.lock ]; then
             npm i -g yarn
             yarn install --frozen-lockfile || yarn install
@@ -50,74 +65,47 @@ jobs:
             npm install
           fi
 
-      - name: Build Angular
-        run: |
-          CONFIG=$([ "${{ github.ref_name }}" = "prod" ] && echo "production" || echo "staging")
-          npm run build -- --configuration=$CONFIG
+      - name: Build
+        run: npm run build
 
-      - name: Auth to GCP (WIF)
+      # ====== Autenticación GCP (WIF/OIDC) ======
+      - name: Auth (WIF/OIDC)
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account:         ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          # -- Alternativa con key JSON (si la usas aún):
+          # credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Configure Docker to use Artifact Registry
-        working-directory: .
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Build image
-        working-directory: .
-        run: |
-          docker build \
-            -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest \
-            ./plazapp
-
-      - name: Push image
-        working-directory: .
-        run: |
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest
-
-  deploy:
-    name: Deploy to Cloud Run
-    needs: build_and_push
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    environment:
-      name: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
-      url:  ${{ steps.deploy.outputs.url }}
-
-    steps:
-      - name: Auth to GCP (WIF)
-        uses: google-github-actions/auth@v2
+      # ====== Construcción y push de la imagen ======
+      # Dockerfile está en la RAÍZ del repo; por eso el context/file salen de la raíz.
+      - name: Build & Push image (Dockerfile en raíz)
+        uses: docker/build-push-action@v6
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account:         ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:cache
+          cache-to: type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:cache,mode=max
 
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service: ${{ env.SERVICE_NAME }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          region: ${{ env.REGION }}
+          flags: --allow-unauthenticated
+        env:
+          CLOUDSDK_CORE_PROJECT: ${{ env.PROJECT_ID }}
 
-      - id: deploy
-        name: Cloud Run deploy
-        run: |
-          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image "$IMAGE" \
-            --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --service-account="${{ secrets.RUNTIME_SA_FRONTEND }}" \
-            --set-env-vars="FIRESTORE_PROJECT=${{ secrets.GCP_PROJECT_ID }}" \
-            --quiet
-          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
+      - name: Output URL
+        run: echo "Deployed URL => ${{ steps.deploy.outputs.url || '' }}"
