@@ -87,10 +87,10 @@ jobs:
       - name: Build image
         run: |
           docker build \
-            -f ./plazapp/Dockerfile \
+            -f ./Dockerfile \
             -t ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -t ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest \
-            ./plazapp
+            .
 
       - name: Push image
         run: |
