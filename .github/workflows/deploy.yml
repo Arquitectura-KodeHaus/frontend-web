@@ -73,19 +73,19 @@ jobs:
           WIF_SA: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
 
       - name: Auth to GCP (WIF)
-        id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER_PROD }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
-          token_format: 'access_token'
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Authenticate Docker with Artifact Registry
+      - name: Configure Docker credentials helper
         run: |
-          echo "${{ steps.auth.outputs.access_token }}" | docker login -u oauth2accesstoken --password-stdin https://${{ env.REGION }}-docker.pkg.dev
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+        env:
+          CLOUDSDK_CORE_DISABLE_PROMPTS: 1
 
       - name: Build image
         run: |
