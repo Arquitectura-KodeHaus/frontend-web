@@ -1,8 +1,8 @@
-name: Build & Deploy (Cloud Run)
+name: Build → Staging → (Approval) → Prod | frontend-web (Angular)
 
 on:
   push:
-    branches: [ "main", "prod" ]   # main = staging, prod = production
+    branches: [ "prod" ]
   workflow_dispatch:
 
 permissions:
@@ -12,15 +12,15 @@ permissions:
 env:
   REGION: ${{ secrets.GCP_REGION }}
   AR_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
-  SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
+  SERVICE_NAME: frontend-web
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ env.SERVICE_NAME }}
+  cancel-in-progress: false
 
 jobs:
-  staging:
-    if: ${{ github.ref == 'refs/heads/main' }}
-    name: Build → Push → Deploy (STAGING)
+  build:
     runs-on: ubuntu-latest
-    environment: staging
-
     steps:
       - uses: actions/checkout@v4
 
@@ -36,51 +36,47 @@ jobs:
       - name: Docker auth to Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Compute image name
+      - name: Compute image tag
         id: img
         run: |
-          IMAGE="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${AR_REPO}/${SERVICE_NAME}:${GITHUB_SHA}"
-          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "image=${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}" >> $GITHUB_OUTPUT
 
-      - name: Build & Push
+      - name: Build & push container
         run: |
           docker build -t "${{ steps.img.outputs.image }}" .
           docker push "${{ steps.img.outputs.image }}"
 
+  deploy_staging:
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Auth to GCP (TEST) via OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER_TEST }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_TEST }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Deploy to Cloud Run (STAGING)
         run: |
-          case "${SERVICE_NAME}" in
-            frontend-web) RUNTIME_SA="run-frontend@${{ secrets.GCP_PROJECT_ID_TEST }}.iam.gserviceaccount.com" ;;
-            backend-java) RUNTIME_SA="run-backend-java@${{ secrets.GCP_PROJECT_ID_TEST }}.iam.gserviceaccount.com" ;;
-            backend-dotnet) RUNTIME_SA="run-backend-dotnet@${{ secrets.GCP_PROJECT_ID_TEST }}.iam.gserviceaccount.com" ;;
-          esac
-
-          ENV_FLAGS="--set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_TEST }}"
-          if [ "${SERVICE_NAME}" = "frontend-web" ]; then
-            ENV_FLAGS="${ENV_FLAGS},API_BASE_URL=${{ secrets.API_BASE_URL_TEST }}"
-          fi
-          if [ "${SERVICE_NAME}" = "backend-dotnet" ]; then
-            ENV_FLAGS="${ENV_FLAGS},ASPNETCORE_URLS=http://0.0.0.0:\$PORT"
-          fi
-
-          gcloud run deploy "${SERVICE_NAME}" \
-            --image "${{ steps.img.outputs.image }}" \
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --image "$IMAGE" \
             --project "${{ secrets.GCP_PROJECT_ID_TEST }}" \
-            --region "${REGION}" \
+            --region "${{ env.REGION }}" \
             --platform managed \
-            --service-account "${RUNTIME_SA}" \
+            --service-account "run-frontend@${{ secrets.GCP_PROJECT_ID_TEST }}.iam.gserviceaccount.com" \
             --allow-unauthenticated \
-            ${ENV_FLAGS}
+            --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_TEST }}
 
-  production:
-    if: ${{ github.ref == 'refs/heads/prod' }}
-    name: Promote to PRODUCTION
+  promote_prod:
+    needs: [deploy_staging]
     runs-on: ubuntu-latest
-    environment: production
-
+    environment: production   # ← Pedirá aprobación del equipo
     steps:
-      - uses: actions/checkout@v4
-
       - name: Auth to GCP (PROD) via OIDC
         uses: google-github-actions/auth@v2
         with:
@@ -90,44 +86,25 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Docker auth to Artifact Registry
+      - name: Docker auth
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Compute image names
-        id: names
+      - name: Copy image TEST → PROD
         run: |
-          SRC="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${AR_REPO}/${SERVICE_NAME}:${GITHUB_SHA}"
-          DST="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${AR_REPO}/${SERVICE_NAME}:${GITHUB_SHA}"
-          echo "src=$SRC" >> $GITHUB_OUTPUT
-          echo "dst=$DST" >> $GITHUB_OUTPUT
-
-      - name: Pull from STAGING & push to PROD
-        run: |
-          docker pull "${{ steps.names.outputs.src }}"
-          docker tag "${{ steps.names.outputs.src }}" "${{ steps.names.outputs.dst }}"
-          docker push "${{ steps.names.outputs.dst }}"
+          SRC="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
+          DST="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
+          docker pull "$SRC"
+          docker tag  "$SRC" "$DST"
+          docker push "$DST"
 
       - name: Deploy to Cloud Run (PROD)
         run: |
-          case "${SERVICE_NAME}" in
-            frontend-web) RUNTIME_SA="run-frontend@${{ secrets.GCP_PROJECT_ID_PROD }}.iam.gserviceaccount.com" ;;
-            backend-java) RUNTIME_SA="run-backend-java@${{ secrets.GCP_PROJECT_ID_PROD }}.iam.gserviceaccount.com" ;;
-            backend-dotnet) RUNTIME_SA="run-backend-dotnet@${{ secrets.GCP_PROJECT_ID_PROD }}.iam.gserviceaccount.com" ;;
-          esac
-
-          ENV_FLAGS="--set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_PROD }}"
-          if [ "${SERVICE_NAME}" = "frontend-web" ]; then
-            ENV_FLAGS="${ENV_FLAGS},API_BASE_URL=${{ secrets.API_BASE_URL_PROD }}"
-          fi
-          if [ "${SERVICE_NAME}" = "backend-dotnet" ]; then
-            ENV_FLAGS="${ENV_FLAGS},ASPNETCORE_URLS=http://0.0.0.0:\$PORT"
-          fi
-
-          gcloud run deploy "${SERVICE_NAME}" \
-            --image "${{ steps.names.outputs.dst }}" \
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --image "$IMAGE" \
             --project "${{ secrets.GCP_PROJECT_ID_PROD }}" \
-            --region "${REGION}" \
+            --region "${{ env.REGION }}" \
             --platform managed \
-            --service-account "${RUNTIME_SA}" \
+            --service-account "run-frontend@${{ secrets.GCP_PROJECT_ID_PROD }}.iam.gserviceaccount.com" \
             --allow-unauthenticated \
-            ${ENV_FLAGS}
+            --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_PROD }}
