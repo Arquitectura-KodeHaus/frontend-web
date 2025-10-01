@@ -11,7 +11,7 @@ env:
   ARTIFACT_REPO: apps
   IMAGE_NAME: frontend-web
   SERVICE_NAME: frontend-web
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
 
 jobs:
   build_and_push:
