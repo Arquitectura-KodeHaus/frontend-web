@@ -1,21 +1,23 @@
-# ---- Build stage ----
+# ====== 1) Build (Node) ======
 FROM node:20-alpine AS build
 WORKDIR /app
+
+# Dependencias con buen caching
 COPY package*.json ./
 RUN npm ci
+
+# Copia el código y construye (Angular CLI se ejecuta vía npm script)
 COPY . .
-# Ajusta "build" si tu script es diferente
+# Si tu script se llama distinto, ajústalo (por defecto: "build": "ng build")
 RUN npm run build
 
-# ---- Run stage (nginx) ----
+# ====== 2) Runtime (Nginx) ======
 FROM nginx:alpine
-# elimina default.conf y agrega SPA fallback
-RUN rm -f /etc/nginx/conf.d/default.conf
+# Config Nginx para SPA Angular
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copia artefactos (ajusta si tu carpeta es 'dist' o 'build')
-COPY --from=build /app/dist /usr/share/nginx/html
+# Angular genera /dist/<nombre-app>; el wildcard cubre cualquier nombre
+COPY --from=build /app/dist/ /usr/share/nginx/html/
 
-# Cloud Run setea $PORT. nginx escucha 8080 por defecto, así que exponemos 8080
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
