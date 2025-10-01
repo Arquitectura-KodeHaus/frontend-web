@@ -3,16 +3,18 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Dependencias con buen caching
-COPY package*.json ./
+COPY plazapp/package*.json ./
 RUN npm ci
 
-# Copia el código y construye (Angular CLI se ejecuta vía npm script)
-COPY . .
-# Si tu script se llama distinto, ajústalo (por defecto: "build": "ng build")
+# Copia SOLO el código de plazapp
+COPY plazapp/ ./
+
+# Build de Angular
 RUN npm run build
 
 # ====== 2) Runtime (Nginx) ======
 FROM nginx:alpine
+
 # Config Nginx para SPA Angular
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
