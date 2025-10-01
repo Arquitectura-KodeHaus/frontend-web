@@ -6,13 +6,11 @@ on:
   pull_request:
     branches: [ prod ]
 
-# 1) ENV AL NIVEL RAÍZ (antes de usarlo en cualquier parte)
 env:
   REGION: us-central1
   ARTIFACT_REPO: apps
   IMAGE_NAME: frontend-web
   SERVICE_NAME: frontend-web
-  # si tu Angular necesita esto para build:
   NODE_VERSION: '18'
 
 jobs:
@@ -22,7 +20,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    # Para que puedas exigir este check en la regla de la rama:
     if: github.ref_name == 'develop' || github.ref_name == 'prod'
 
     steps:
@@ -34,23 +31,35 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install deps
-        run: npm ci
+      - name: Install deps (lockfile-aware)
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            npm i -g pnpm
+            pnpm install
+          elif [ -f yarn.lock ]; then
+            npm i -g yarn
+            yarn install --frozen-lockfile || yarn install
+          elif [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Build Angular
-        run: npm run build -- --configuration=${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+        run: |
+          CONFIG=$([ "${{ github.ref_name }}" = "prod" ] && echo "production" || echo "staging")
+          npm run build -- --configuration=$CONFIG
 
-      - name: Auth to GCP (Workload Identity Federation)
+      - name: Auth to GCP (WIF)
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account:         ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-      - name: Configure gcloud
+      - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-          install_components: 'gke-gcloud-auth-plugin'
 
       - name: Configure Docker to use Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
@@ -77,6 +86,7 @@ jobs:
     environment:
       name: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
       url:  ${{ steps.deploy.outputs.url }}
+
     steps:
       - name: Auth to GCP (WIF)
         uses: google-github-actions/auth@v2
