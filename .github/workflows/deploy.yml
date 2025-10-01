@@ -21,11 +21,6 @@ jobs:
       contents: read
       id-token: write
     if: github.ref_name == 'develop' || github.ref_name == 'prod'
-    
-    # Configuración para que todos los comandos se ejecuten en el subdirectorio plazapp
-    defaults:
-      run:
-        working-directory: ./plazapp
 
     steps:
       - name: Checkout
@@ -35,10 +30,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache-dependency-path: plazapp/package-lock.json
 
       - name: Install deps (lockfile-aware)
+        working-directory: plazapp
         run: |
-          cd plazapp
           if [ -f pnpm-lock.yaml ]; then
             npm i -g pnpm
             pnpm install
@@ -50,9 +46,9 @@ jobs:
           else
             npm install
           fi
-        working-directory: .
 
       - name: Build Angular
+        working-directory: plazapp
         run: |
           CONFIG=$([ "${{ github.ref_name }}" = "prod" ] && echo "production" || echo "staging")
           npm run build -- --configuration=$CONFIG
@@ -69,11 +65,9 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Configure Docker to use Artifact Registry
-        working-directory: .
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
       - name: Build image
-        working-directory: .
         run: |
           docker build \
             -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
@@ -81,7 +75,6 @@ jobs:
             ./plazapp
 
       - name: Push image
-        working-directory: .
         run: |
           docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest
