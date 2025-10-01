@@ -1,0 +1,78 @@
+<div class="dashboard-layout">
+    <header class="user-greeting">
+        <h1>Bienvenido, María González</h1>
+        <p>Gestiona tus productos y reservas desde aquí</p>
+    </header>
+
+    <div class="tabs-group">
+        
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'overview'"
+            (click)="setActiveTab('overview')">
+            Resumen
+        </button>
+
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'reservations'"
+            (click)="setActiveTab('reservations')">
+            Reservas
+        </button>
+
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'products'"
+            (click)="setActiveTab('products')">
+            Mis Productos
+        </button>
+
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'catalog'"
+            (click)="setActiveTab('catalog')">
+            Catálogo
+        </button>
+        
+        <button 
+            class="tab-trigger"
+            [class.tab-active]="activeTab === 'chat'"
+            (click)="setActiveTab('chat')">
+            Chat
+        </button>
+    </div>
+
+    <div class="tabs-content-container">
+
+        <div *ngIf="activeTab === 'overview'" class="card-grid">
+            
+            <div *ngFor="let card of cardData" class="card-base hover-shadow">
+                <div class="card-header-row">
+                    <h3 class="card-title">{{ card.title }}</h3>
+                    <span class="icon-muted">📦</span> 
+                </div>
+                <div class="card-content">
+                    <div class="metric-value" [class]="card.colorClass">{{ card.value }}</div>
+                    <p class="metric-detail">{{ card.detail }}</p>
+                </div>
+            </div>
+            
+        </div>
+
+        <div *ngIf="activeTab === 'reservations'">
+            <app-reservations></app-reservations>
+        </div>
+
+        <div *ngIf="activeTab === 'products'">
+            <app-active-products></app-active-products>
+        </div>
+
+        <div *ngIf="activeTab === 'catalog'">
+            <app-product-catalog></app-product-catalog>
+        </div>
+
+        <div *ngIf="activeTab === 'chat'">
+            <app-chat></app-chat>
+        </div>
+    </div>
+</div>

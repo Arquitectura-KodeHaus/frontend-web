@@ -1,0 +1,110 @@
+name: Build → Staging → (Approval) → Prod | frontend-web (Angular)
+
+on:
+  push:
+    branches: [ "prod" ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  REGION: ${{ secrets.GCP_REGION }}
+  AR_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
+  SERVICE_NAME: frontend-web
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ env.SERVICE_NAME }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to GCP (TEST) via OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER_TEST }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_TEST }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Docker auth to Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Compute image tag
+        id: img
+        run: |
+          echo "image=${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build & push container
+        run: |
+          docker build -t "${{ steps.img.outputs.image }}" .
+          docker push "${{ steps.img.outputs.image }}"
+
+  deploy_staging:
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Auth to GCP (TEST) via OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER_TEST }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_TEST }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run (STAGING)
+        run: |
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --image "$IMAGE" \
+            --project "${{ secrets.GCP_PROJECT_ID_TEST }}" \
+            --region "${{ env.REGION }}" \
+            --platform managed \
+            --service-account "run-frontend@${{ secrets.GCP_PROJECT_ID_TEST }}.iam.gserviceaccount.com" \
+            --allow-unauthenticated \
+            --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_TEST }}
+
+  promote_prod:
+    needs: [deploy_staging]
+    runs-on: ubuntu-latest
+    environment: production   # ← Pedirá aprobación del equipo
+    steps:
+      - name: Auth to GCP (PROD) via OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER_PROD }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Docker auth
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Copy image TEST → PROD
+        run: |
+          SRC="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
+          DST="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
+          docker pull "$SRC"
+          docker tag  "$SRC" "$DST"
+          docker push "$DST"
+
+      - name: Deploy to Cloud Run (PROD)
+        run: |
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --image "$IMAGE" \
+            --project "${{ secrets.GCP_PROJECT_ID_PROD }}" \
+            --region "${{ env.REGION }}" \
+            --platform managed \
+            --service-account "run-frontend@${{ secrets.GCP_PROJECT_ID_PROD }}.iam.gserviceaccount.com" \
+            --allow-unauthenticated \
+            --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_PROD }}

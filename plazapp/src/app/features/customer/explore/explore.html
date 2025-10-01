@@ -1,0 +1,68 @@
+<div class="explore-container">
+
+    <div class="section-header">
+        <h2 class="section-title">Explorar Productos</h2>
+        <p class="section-subtitle">Encuentra los mejores precios en la plaza</p>
+    </div>
+
+    <div class="filter-and-search-row">
+        <input 
+            type="text" 
+            placeholder="Q Buscar productos..." 
+            [ngModel]="searchTerm.value" 
+            (ngModelChange)="onSearchTermChange($event)"
+            class="search-input">
+            
+        <div class="filter-buttons-group">
+            <button 
+                class="filter-btn" 
+                [class.filter-active]="activeFilter.value === 'Todos'"
+                (click)="setActiveFilter('Todos')">
+                Todos
+            </button>
+            <button 
+                class="filter-btn" 
+                [class.filter-active]="activeFilter.value === 'Verduras'"
+                (click)="setActiveFilter('Verduras')">
+                Verduras
+            </button>
+            <button 
+                class="filter-btn" 
+                [class.filter-active]="activeFilter.value === 'Frutas'"
+                (click)="setActiveFilter('Frutas')">
+                Frutas
+            </button>
+        </div>
+    </div>
+
+    <div class="products-grouped-list">
+        <div *ngFor="let productGroup of filteredProducts$ | async" class="product-group-card">
+            
+            <div class="product-group-header">
+                <h3>{{ productGroup.name }}</h3>
+                <span class="tag tag-{{ productGroup.type | lowercase }}">{{ productGroup.type }}</span>
+            </div>
+            <p class="merchant-count">{{ productGroup.merchantCount }} comerciantes disponibles</p>
+
+            <div *ngFor="let merchant of productGroup.merchants" class="merchant-offer-row">
+                <div class="merchant-info">
+                    <span class="merchant-name">{{ merchant.merchantName }}</span>
+                    <span class="puesto-name">{{ merchant.puestoName }}</span>
+                </div>
+                <div class="price-and-reserve">
+                    <div class="price-info">
+                        <span class="current-price">${{ merchant.price | number:'1.2-2' }} / kg</span>
+                        <span class="bulletin-stock-info">
+                            Boletín: ${{ merchant.bulletinPrice | number:'1.2-2' }} + Stock: {{ merchant.stock }}
+                        </span>
+                    </div>
+                    <button class="btn btn-primary btn-reserve" (click)="onReserve(merchant)">Reservar</button>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="!(filteredProducts$ | async)?.length" class="no-data-message">
+            No se encontraron productos que coincidan con la búsqueda o filtro.
+        </div>
+    </div>
+</div>

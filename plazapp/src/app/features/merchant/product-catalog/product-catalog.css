@@ -1,0 +1,179 @@
+/* ---------------------------------------------------- */
+/* 1. Contenedor y Fila de Filtros/Búsqueda */
+/* ---------------------------------------------------- */
+.catalog-container {
+    padding: 10px 0;
+}
+
+.filter-and-search-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+/* Estilo de la barra de búsqueda */
+.search-input {
+    flex-grow: 1; /* Ocupa el espacio restante */
+    max-width: 300px; 
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+    border-color: #4CAF50; /* Color de foco verde */
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+}
+
+/* Grupo de botones de filtro */
+.filter-buttons-group {
+    display: flex;
+    /* Contenedor blanco sutil que envuelve los botones */
+    background-color: #f0f0f0; 
+    padding: 5px;
+    border-radius: 8px;
+    gap: 5px;
+}
+
+.filter-btn {
+    background: none;
+    border: none;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+/* Estilo del botón de filtro activo */
+.filter-active {
+    background-color: white; /* Fondo blanco para el botón activo */
+    color: #333;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ---------------------------------------------------- */
+/* 2. Grid de Productos (Cards) */
+/* ---------------------------------------------------- */
+.product-grid-catalog {
+    display: grid;
+    /* 3 columnas, ajustables para diferentes tamaños de pantalla */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+    gap: 20px;
+}
+
+.catalog-card {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column; /* Para empujar el botón al final */
+}
+
+.card-product-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 5px;
+}
+
+.card-product-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+/* Tags (Verduras, Frutas) - Reutilizados del componente de Mis Productos */
+.tag {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: capitalize;
+    /* Ajustes específicos para el catálogo para que sean más pequeños */
+    align-self: flex-start; 
+}
+
+/* Asegúrate de que los colores de las tags estén definidos en tu archivo global o en este: */
+.tag-verduras {
+    background-color: #e6f4ea;
+    color: #388e3c;
+}
+
+.tag-frutas {
+    background-color: #fff3e0; 
+    color: #f57c00; 
+}
+
+.product-description {
+    font-size: 13px;
+    color: #666;
+    margin: 0 0 15px 0;
+    min-height: 1.5em; /* Espacio para una línea de descripción */
+}
+
+/* Información de Precio */
+.product-price-info {
+    margin-top: auto; /* Empuja el precio y botón al final de la tarjeta */
+    border-top: 1px dashed #eee;
+    padding-top: 15px;
+}
+
+.price-label {
+    font-size: 13px;
+    color: #777;
+    margin-bottom: 5px;
+}
+
+.price-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #4CAF50; /* Color verde principal */
+    line-height: 1;
+}
+
+/* ---------------------------------------------------- */
+/* 3. Botón de Acción Principal (Agregar a mi puesto) */
+/* ---------------------------------------------------- */
+.btn-primary {
+    background-color: #4CAF50; /* Verde principal */
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 15px;
+}
+
+.btn-primary:hover {
+    background-color: #388e3c; /* Verde más oscuro al pasar el ratón */
+}
+
+.btn-full-width {
+    width: 100%;
+}
+
+/* Mensaje sin datos */
+.no-data-message {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    background-color: #fff;
+    border: 1px dashed #ddd;
+    border-radius: 8px;
+    margin-top: 20px;
+    grid-column: 1 / -1; /* Ocupa todo el ancho del grid */
+}
