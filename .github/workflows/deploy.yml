@@ -1,110 +1,105 @@
-name: Build → Staging → (Approval) → Prod | frontend-web (Angular)
+name: ci-frontend
 
 on:
   push:
-    branches: [ "prod" ]
-  workflow_dispatch:
+    branches: [ develop, prod ]
+  pull_request:
+    branches: [ prod ]
 
-permissions:
-  id-token: write
-  contents: read
-
+# 1) ENV AL NIVEL RAÍZ (antes de usarlo en cualquier parte)
 env:
-  REGION: ${{ secrets.GCP_REGION }}
-  AR_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
+  REGION: us-central1
+  ARTIFACT_REPO: apps
+  IMAGE_NAME: frontend-web
   SERVICE_NAME: frontend-web
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ env.SERVICE_NAME }}
-  cancel-in-progress: false
+  # si tu Angular necesita esto para build:
+  NODE_VERSION: '18'
 
 jobs:
-  build:
+  build_and_push:
+    name: Build & Push
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    permissions:
+      contents: read
+      id-token: write
+    # Para que puedas exigir este check en la regla de la rama:
+    if: github.ref_name == 'develop' || github.ref_name == 'prod'
 
-      - name: Auth to GCP (TEST) via OIDC
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build Angular
+        run: npm run build -- --configuration=${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+
+      - name: Auth to GCP (Workload Identity Federation)
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER_TEST }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_TEST }}
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account:         ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-      - name: Setup gcloud
+      - name: Configure gcloud
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: 'gke-gcloud-auth-plugin'
 
-      - name: Docker auth to Artifact Registry
+      - name: Configure Docker to use Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Compute image tag
-        id: img
+      - name: Build image
         run: |
-          echo "image=${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          docker build \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest \
+            .
 
-      - name: Build & push container
+      - name: Push image
         run: |
-          docker build -t "${{ steps.img.outputs.image }}" .
-          docker push "${{ steps.img.outputs.image }}"
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest
 
-  deploy_staging:
-    needs: [build]
+  deploy:
+    name: Deploy to Cloud Run
+    needs: build_and_push
     runs-on: ubuntu-latest
-    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+      url:  ${{ steps.deploy.outputs.url }}
     steps:
-      - name: Auth to GCP (TEST) via OIDC
+      - name: Auth to GCP (WIF)
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER_TEST }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_TEST }}
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account:         ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
-
-      - name: Deploy to Cloud Run (STAGING)
-        run: |
-          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
-          gcloud run deploy "${{ env.SERVICE_NAME }}" \
-            --image "$IMAGE" \
-            --project "${{ secrets.GCP_PROJECT_ID_TEST }}" \
-            --region "${{ env.REGION }}" \
-            --platform managed \
-            --service-account "run-frontend@${{ secrets.GCP_PROJECT_ID_TEST }}.iam.gserviceaccount.com" \
-            --allow-unauthenticated \
-            --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_TEST }}
-
-  promote_prod:
-    needs: [deploy_staging]
-    runs-on: ubuntu-latest
-    environment: production   # ← Pedirá aprobación del equipo
-    steps:
-      - name: Auth to GCP (PROD) via OIDC
-        uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER_PROD }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Docker auth
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-
-      - name: Copy image TEST → PROD
+      - id: deploy
+        name: Cloud Run deploy
         run: |
-          SRC="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_TEST }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
-          DST="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
-          docker pull "$SRC"
-          docker tag  "$SRC" "$DST"
-          docker push "$DST"
-
-      - name: Deploy to Cloud Run (PROD)
-        run: |
-          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
-          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image "$IMAGE" \
-            --project "${{ secrets.GCP_PROJECT_ID_PROD }}" \
-            --region "${{ env.REGION }}" \
+            --region ${{ env.REGION }} \
             --platform managed \
-            --service-account "run-frontend@${{ secrets.GCP_PROJECT_ID_PROD }}.iam.gserviceaccount.com" \
             --allow-unauthenticated \
-            --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID_PROD }}
+            --service-account="${{ secrets.RUNTIME_SA_FRONTEND }}" \
+            --set-env-vars="FIRESTORE_PROJECT=${{ secrets.GCP_PROJECT_ID }}" \
+            --quiet
+          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
