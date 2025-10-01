@@ -1,132 +1,25 @@
-name: ci-frontend
+# ====== 1) Build (Node) ======
+FROM node:20-alpine AS build
+WORKDIR /app
 
-on:
-  push:
-    branches: [ develop, prod ]
-  pull_request:
-    branches: [ prod ]
+# Dependencias con buen caching
+COPY plazapp/package*.json ./
+RUN npm ci
 
-env:
-  REGION: us-central1
-  ARTIFACT_REPO: apps
-  IMAGE_NAME: frontend-web
-  SERVICE_NAME: frontend-web
-  NODE_VERSION: '20'
+# Copia SOLO el código de plazapp
+COPY plazapp/ ./
 
-jobs:
-  build_and_push:
-    name: Build & Push
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    if: github.ref_name == 'develop' || github.ref_name == 'prod'
-    environment:
-      name: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+# Build de Angular
+RUN npm run build
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+# ====== 2) Runtime (Nginx) ======
+FROM nginx:alpine
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache-dependency-path: plazapp/package-lock.json
+# Config Nginx para SPA Angular
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-      - name: Install deps (lockfile-aware)
-        working-directory: plazapp
-        run: |
-          if [ -f pnpm-lock.yaml ]; then
-            npm i -g pnpm
-            pnpm install
-          elif [ -f yarn.lock ]; then
-            npm i -g yarn
-            yarn install --frozen-lockfile || yarn install
-          elif [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+# Angular genera /dist/<nombre-app>; el wildcard cubre cualquier nombre
+COPY --from=build /app/dist/ /usr/share/nginx/html/
 
-      - name: Build Angular
-        working-directory: plazapp
-        run: |
-          CONFIG=$([ "${{ github.ref_name }}" = "prod" ] && echo "production" || echo "staging")
-          npm run build -- --configuration=$CONFIG
-
-      - name: Debug secrets
-        run: |
-          echo "Checking if secrets are accessible..."
-          if [ -z "$WIF_PROVIDER" ]; then
-            echo "❌ WIF_PROVIDER_PROD is EMPTY or not accessible"
-          else
-            echo "✅ WIF_PROVIDER_PROD is set (length: ${#WIF_PROVIDER})"
-          fi
-          if [ -z "$WIF_SA" ]; then
-            echo "❌ WIF_SERVICE_ACCOUNT_PROD is EMPTY or not accessible"
-          else
-            echo "✅ WIF_SERVICE_ACCOUNT_PROD is set (length: ${#WIF_SA})"
-          fi
-        env:
-          WIF_PROVIDER: ${{ secrets.WIF_PROVIDER_PROD }}
-          WIF_SA: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
-
-      - name: Auth to GCP (WIF)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER_PROD }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
-
-      - name: Authenticate Docker with Artifact Registry
-        run: |
-          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://${{ env.REGION }}-docker.pkg.dev
-
-      - name: Build image
-        run: |
-          docker build \
-            -f ./Dockerfile \
-            -t ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -t ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest \
-            .
-
-      - name: Push image
-        run: |
-          docker push ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest
-
-  deploy:
-    name: Deploy to Cloud Run
-    needs: build_and_push
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    environment:
-      name: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
-      url:  ${{ steps.deploy.outputs.url }}
-
-    steps:
-      - name: Auth to GCP (WIF)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER_PROD }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT_PROD }}
-
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      - id: deploy
-        name: Cloud Run deploy
-        run: |
-          IMAGE="${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image "$IMAGE" \
-            --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --service-account="${{ secrets.RUNTIME_SA_FRONTEND }}" \
-            --set-env-vars="FIRESTORE_PROJECT=${GOOGLE_CLOUD_PROJECT}" \
-            --quiet
-          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]
