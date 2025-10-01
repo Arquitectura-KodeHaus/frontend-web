@@ -1,0 +1,132 @@
+/* ---------------------------------------------------- */
+/* 1. Estilos Globales del Dashboard y Bienvenida */
+/* ---------------------------------------------------- */
+.dashboard-layout {
+    /* Fondo que coincide con el color de la página */
+    background-color: #f7f7f7; 
+    padding: 30px;
+    min-height: 100vh;
+}
+
+.user-greeting {
+    margin-bottom: 25px;
+}
+
+.user-greeting h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.user-greeting p {
+    font-size: 14px;
+    color: #666;
+    margin: 5px 0 0 0;
+}
+
+/* ---------------------------------------------------- */
+/* 2. Estilos de las Pestañas (Tabs) */
+/* ---------------------------------------------------- */
+.tabs-group {
+    display: flex;
+    /* Un contenedor blanco que envuelve las pestañas, como se ve en la imagen */
+    background-color: white; 
+    border-radius: 8px;
+    padding: 10px 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* Sutil sombra */
+    margin-bottom: 20px;
+    gap: 10px; /* Espacio entre los botones */
+}
+
+.tab-trigger {
+    background: none;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    color: #6c757d; /* Gris tenue para inactivos */
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.tab-trigger:hover {
+    background-color: #f0f0f0;
+}
+
+/* Estilo para la pestaña activa (Mis Productos, Resumen, etc.) */
+.tab-active {
+    color: #000000; /* Negro para texto activo */
+    background-color: #e8e8e8; /* Fondo gris claro para activo */
+    font-weight: 600;
+}
+
+.tabs-content-container {
+    padding-top: 10px;
+}
+
+/* ---------------------------------------------------- */
+/* 3. Estilos del Resumen (Tarjetas) */
+/* ---------------------------------------------------- */
+.card-grid {
+    display: grid;
+    /* 3 columnas para las tarjetas de resumen */
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 20px;
+}
+
+.card-base {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    transition: box-shadow 0.3s;
+}
+
+.hover-shadow:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    margin: 0;
+}
+
+/* Iconos (ajusta el tamaño si usas una librería de iconos) */
+.icon-muted {
+    color: #ccc;
+    font-size: 18px;
+}
+
+.metric-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 0px;
+}
+
+.metric-detail {
+    font-size: 12px;
+    color: #999;
+    margin: 0;
+}
+
+/* Colores de las métricas basados en tu data simulada */
+.metric-primary {
+    /* Color verde que parece usarse en los números activos */
+    color: #4CAF50; 
+}
+
+.metric-accent {
+    /* Un color naranja o rojo para alertas o pendientes */
+    color: #FF9800; 
+}

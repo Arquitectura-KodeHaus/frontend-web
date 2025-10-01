@@ -1,0 +1,62 @@
+<div class="active-products-container">
+    <h2 class="section-title">Mis Productos</h2>
+    <p class="section-subtitle">Gestiona tus productos activos y precios</p>
+
+    <div *ngFor="let product of products$ | async" class="product-card"> 
+        
+        <div class="card-header-product">
+            <div class="product-title-group">
+                <h3>{{ product.name }}</h3>
+                <span class="tag tag-{{ product.type | lowercase }}">{{ product.type }}</span>
+                <span *ngIf="!product.status" class="badge badge-inactive">Inactivo</span>
+            </div>
+            
+            <div class="product-toggle-container">
+                <input 
+                    type="checkbox" 
+                    [id]="'switch-' + product.id" 
+                    [checked]="product.status"
+                    (change)="toggleActive(product)"
+                    class="toggle-switch">
+                <label [for]="'switch-' + product.id" class="toggle-label"></label>
+            </div>
+        </div>
+
+        <p class="publish-date">Publicado el {{ product.publishedDateFormatted }}</p>
+
+        <div class="product-details-grid">
+            <div class="detail-item">
+                <span class="detail-label">Precio Actual</span>
+                <span class="detail-value text-green">${{ product.merchantPrice | number:'1.2-2' }} / kg</span>
+                <span class="detail-subtext">Boletín: ${{ product.bulletinPrice | number:'1.2-2' }}</span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">Stock</span>
+                <span class="detail-value">{{ product.stock }} kg</span> 
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">Estado</span>
+                <span class="detail-value" [class.text-green]="product.status">{{ product.status ? 'Activo' : 'Inactivo' }}</span>
+            </div>
+        </div>
+
+        <div class="product-actions">
+            <button class="btn btn-secondary" (click)="onEdit(product)">Editar</button>
+            <button class="btn btn-danger" (click)="onDelete(product)">Eliminar</button>
+        </div>
+
+    </div>
+    
+    <div *ngIf="!(products$ | async)?.length" class="no-data-message">
+        Aún no tienes productos activos.
+    </div>
+
+    <app-edit-product-modal
+        *ngIf="isModalOpen"
+        [product]="productToEdit"
+        (closeModal)="onCloseModal()"
+        (saveChanges)="onSaveChanges($event)">
+    </app-edit-product-modal>
+</div>

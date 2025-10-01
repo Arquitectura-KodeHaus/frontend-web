@@ -1,0 +1,226 @@
+/* ---------------------------------------------------- */
+/* 1. Contenedor y Títulos */
+/* ---------------------------------------------------- */
+.active-products-container {
+    padding: 10px 0;
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.section-subtitle {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+/* Estilo para el mensaje cuando no hay datos */
+.no-data-message {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    background-color: #fff;
+    border: 1px dashed #ddd;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+/* ---------------------------------------------------- */
+/* 2. Tarjeta del Producto (product-card) */
+/* ---------------------------------------------------- */
+.product-card {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 15px; /* Espacio entre tarjetas */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.card-header-product {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.product-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.product-title-group h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+/* Etiquetas (Verduras, Frutas) */
+.tag {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: capitalize;
+}
+
+.tag-verduras {
+    background-color: #e6f4ea; /* Verde claro */
+    color: #388e3c; /* Verde oscuro */
+}
+
+.tag-frutas {
+    background-color: #fff3e0; /* Naranja claro */
+    color: #f57c00; /* Naranja oscuro */
+}
+
+/* Badge de Inactivo/Sin Stock */
+.badge-inactive {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background-color: #f44336; /* Rojo */
+    color: white;
+}
+
+.publish-date {
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 15px;
+}
+
+/* ---------------------------------------------------- */
+/* 3. Grid de Detalles (Precios, Stock, Estado) */
+/* ---------------------------------------------------- */
+.product-details-grid {
+    display: flex;
+    /* Divide el espacio horizontalmente para 4 o 3 columnas */
+    gap: 30px; 
+    margin-bottom: 15px;
+}
+
+.detail-item {
+    /* Ocupa el mismo espacio horizontal */
+    flex-basis: 25%; 
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-label {
+    font-size: 13px;
+    color: #777;
+    margin-bottom: 3px;
+}
+
+.detail-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #000;
+    line-height: 1.2;
+}
+
+.detail-subtext {
+    font-size: 12px;
+    color: #999;
+    margin-top: 2px;
+}
+
+.text-green {
+    color: #4CAF50 !important; /* El color verde principal */
+}
+
+/* ---------------------------------------------------- */
+/* 4. Switch de Activación (Toggle) */
+/* ---------------------------------------------------- */
+.product-toggle-container {
+    display: flex;
+    align-items: center;
+}
+
+/* Ocultar el input checkbox original */
+.toggle-switch {
+    height: 0;
+    width: 0;
+    visibility: hidden;
+}
+
+.toggle-label {
+    cursor: pointer;
+    text-indent: -9999px;
+    width: 45px; /* Ancho del switch */
+    height: 25px; /* Alto del switch */
+    background: #ccc;
+    display: block;
+    border-radius: 100px;
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+.toggle-label:after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 19px; /* Tamaño del círculo */
+    height: 19px;
+    background: #fff;
+    border-radius: 90px;
+    transition: 0.3s;
+}
+
+/* Cambiar el color y mover el círculo cuando está checked */
+.toggle-switch:checked + .toggle-label {
+    background: #4CAF50; /* Fondo verde cuando está activo */
+}
+
+.toggle-switch:checked + .toggle-label:after {
+    left: calc(100% - 3px);
+    transform: translateX(-100%);
+}
+
+/* ---------------------------------------------------- */
+/* 5. Botones de Acción (Editar/Eliminar) */
+/* ---------------------------------------------------- */
+.product-actions {
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 8px 15px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+.btn-secondary {
+    background-color: #f0f0f0;
+    color: #555;
+    border: 1px solid #ccc;
+}
+
+.btn-secondary:hover {
+    background-color: #e0e0e0;
+}
+
+.btn-danger {
+    background-color: #f44336;
+    color: white;
+    border: 1px solid #f44336;
+}
+
+.btn-danger:hover {
+    background-color: #d32f2f;
+}

@@ -1,0 +1,55 @@
+<div class="catalog-container">
+    <div class="filter-and-search-row">
+        <input 
+            type="text" 
+            placeholder="Q Buscar productos..." 
+            [(ngModel)]="searchTerm" 
+            class="search-input">
+            
+        <div class="filter-buttons-group">
+            <button 
+                class="filter-btn" 
+                [class.filter-active]="activeFilter === 'Todos'"
+                (click)="setActiveFilter('Todos')">
+                Todos
+            </button>
+            <button 
+                class="filter-btn" 
+                [class.filter-active]="activeFilter === 'Verduras'"
+                (click)="setActiveFilter('Verduras')">
+                Verduras
+            </button>
+            <button 
+                class="filter-btn" 
+                [class.filter-active]="activeFilter === 'Frutas'"
+                (click)="setActiveFilter('Frutas')">
+                Frutas
+            </button>
+        </div>
+    </div>
+
+    <div class="product-grid-catalog">
+        <div *ngFor="let product of filteredProducts$ | async" class="catalog-card">
+            
+            <div class="card-product-header">
+                <h3>{{ product.name }}</h3>
+                <span class="tag tag-{{ product.type | lowercase }}">{{ product.type }}</span>
+            </div>
+            
+            <p class="product-description">Precio de referencia del boletín de mercado.</p>
+
+            <div class="product-price-info">
+                <p class="price-label">Precio boletín</p>
+                <div class="price-value">${{ product.bulletinPrice | number:'1.2-2' }} / kg</div>
+            </div>
+
+            <button class="btn btn-primary btn-full-width" (click)="onAddToPuesto(product)">
+                + Agregar a mi puesto
+            </button>
+        </div>
+    </div>
+    
+    <div *ngIf="!(filteredProducts$ | async)?.length" class="no-data-message">
+        No se encontraron productos que coincidan con el filtro.
+    </div>
+</div>
