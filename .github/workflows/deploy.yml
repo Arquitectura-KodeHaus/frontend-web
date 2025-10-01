@@ -87,6 +87,7 @@ jobs:
       - name: Build image
         run: |
           docker build \
+            -f ./plazapp/Dockerfile \
             -t ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -t ${{ env.REGION }}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest \
             ./plazapp
@@ -116,8 +117,6 @@ jobs:
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID_PROD }}
 
       - id: deploy
         name: Cloud Run deploy
